@@ -1,0 +1,20 @@
+# Ignore Flutter/Frontend files to keep the backend image small
+lib/
+web/
+android/
+ios/
+test/
+build/
+assets/
+windows/
+macos/
+linux/
+.dart_tool/
+.idea/
+.vscode/
+pubspec.*
+
+# Ignore backend node_modules and local env
+backend/node_modules/
+backend/.env
+backend/*.log
