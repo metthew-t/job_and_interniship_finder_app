@@ -23,11 +23,15 @@ const Job = sequelize.define('Job', {
     type: DataTypes.INTEGER
   },
   jobType: {
-    type: DataTypes.ENUM('full-time', 'part-time', 'internship', 'contract'),
+    type: DataTypes.STRING, // Changed from ENUM to STRING to avoid DB casting errors
     allowNull: false
   },
+  category: {
+    type: DataTypes.STRING,
+    defaultValue: 'Technology'
+  },
   workMode: {
-    type: DataTypes.ENUM('remote', 'hybrid', 'onsite'),
+    type: DataTypes.STRING, // Changed from ENUM to STRING to avoid DB casting errors
     defaultValue: 'onsite'
   },
   deadline: {

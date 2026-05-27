@@ -3,13 +3,20 @@ const sequelize = require('../config/database');
 
 const Application = sequelize.define('Application', {
   status: {
-    type: DataTypes.ENUM('applied', 'reviewed', 'interview', 'offered', 'rejected'),
+    type: DataTypes.STRING,
     defaultValue: 'applied'
   },
   resumeSnapshotUrl: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    field: 'resume_snapshot_url'
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
+  tableName: 'applications',
+  timestamps: true,
   underscored: true
 });
 

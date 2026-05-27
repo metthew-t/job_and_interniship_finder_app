@@ -19,17 +19,51 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
-      child: MaterialApp(
-        title: 'Job & Internship Finder',
-        theme: AppTheme.lightTheme,
-        debugShowCheckedModeBanner: false,
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          '/home': (context) => const HomeScreen(),
-        },
-      ),
+      child: const AppContent(),
+    );
+  }
+}
+
+class AppContent extends StatefulWidget {
+  const AppContent({super.key});
+
+  @override
+  State<AppContent> createState() => _AppContentState();
+}
+
+class _AppContentState extends State<AppContent> {
+  late Future<void> _autoLoginFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the future ONCE to prevent infinite loops
+    _autoLoginFuture = Provider.of<AuthProvider>(context, listen: false).tryAutoLogin();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        return MaterialApp(
+          title: 'Job & Internship Finder',
+          theme: AppTheme.lightTheme,
+          debugShowCheckedModeBanner: false,
+          home: FutureBuilder(
+            future: _autoLoginFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+              return auth.isAuthenticated ? const HomeScreen() : const LoginScreen();
+            },
+          ),
+          routes: {
+            '/register': (context) => const RegisterScreen(),
+            '/home': (context) => const HomeScreen(),
+          },
+        );
+      },
     );
   }
 }

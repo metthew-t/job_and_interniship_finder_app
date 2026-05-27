@@ -36,6 +36,19 @@ class JobCard extends StatelessWidget {
                         job['Employer']?['companyName'] ?? 'Company Name',
                         style: TextStyle(color: Colors.grey[600]),
                       ),
+                      if (job['category'] != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.indigo.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            job['category'],
+                            style: const TextStyle(fontSize: 10, color: Colors.indigo, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -67,6 +80,19 @@ class JobCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (job['deadline'] != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 16, color: Colors.redAccent),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Deadline: ${job['deadline'].toString().split('T')[0]}',
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {

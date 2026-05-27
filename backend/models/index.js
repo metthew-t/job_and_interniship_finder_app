@@ -5,7 +5,7 @@ const Job = require('./Job');
 const Profile = require('./Profile');
 const Application = require('./Application');
 
-// User & Profile
+// User & Profile (User has one Profile, Profile belongs to User)
 User.hasOne(Profile, { foreignKey: 'userId', as: 'profile' });
 Profile.belongsTo(User, { foreignKey: 'userId' });
 
@@ -24,8 +24,6 @@ Application.belongsTo(Job, { foreignKey: 'jobId' });
 // User & Application
 User.hasMany(Application, { foreignKey: 'userId' });
 Application.belongsTo(User, { foreignKey: 'userId' });
-
-// Note: Skills, Experience, Education would follow similar patterns
 
 const db = {
   sequelize,

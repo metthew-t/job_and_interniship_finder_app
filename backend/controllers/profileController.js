@@ -1,74 +1,157 @@
-const { Profile, User, Skill } = require('../models');
-const resumeParser = require('../services/resumeParser');
+const { Profile, User, Employer } = require('../models');
+
+// Safe calculation
+const calculate = (profile, user) => {
+    let score = 0;
+    if (user && user.firstName && user.lastName) score += 20;
+
+    if (user.role === 'employer') {
+        if (profile.companyName && profile.companyName !== 'Not set') score += 20;
+        if (profile.industry && profile.industry !== 'Not set') score += 20;
+        if (profile.website && profile.website !== 'Not set') score += 20;
+        if (profile.description && profile.description !== 'Not set') score += 20;
+    } else {
+        if (profile.university && profile.university !== 'Not set') score += 20;
+        if (profile.courseOfStudy && profile.courseOfStudy !== 'Not set') score += 20;
+        if (profile.locationPreference && profile.locationPreference !== 'Not set') score += 20;
+        if (profile.resumeUrl) score += 20;
+    }
+    return Math.min(score, 100);
+};
 
 exports.getMyProfile = async (req, res) => {
-  try {
-    const profile = await Profile.findOne({
-      where: { userId: req.user.id },
-      include: [{ model: User, attributes: ['email', 'firstName', 'lastName'] }]
-    });
-    res.json(profile);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const userId = req.user.id;
+        const user = await User.findByPk(userId);
+
+        if (user.role === 'employer') {
+            let employer = await Employer.findOne({
+                where: { userId },
+                include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'role'] }]
+            });
+            if (!employer) {
+                employer = await Employer.create({ userId, companyName: `${user.firstName}'s Company` });
+                employer = await Employer.findOne({
+                    where: { userId },
+                    include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'role'] }]
+                });
+            }
+            return res.json(employer);
+        } else {
+            let profile = await Profile.findOne({
+                where: { userId },
+                include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'role'] }]
+            });
+
+            if (!profile) {
+                profile = await Profile.create({ userId });
+                profile = await Profile.findOne({
+                    where: { userId },
+                    include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'role'] }]
+                });
+            }
+            return res.json(profile);
+        }
+    } catch (e) {
+        console.error('[GetProfile] Error:', e);
+        res.status(500).json({ error: e.message });
+    }
 };
 
 exports.updateProfile = async (req, res) => {
-  try {
-    let profile = await Profile.findOne({ where: { userId: req.user.id } });
-    if (!profile) {
-      profile = await Profile.create({ ...req.body, userId: req.user.id });
-    } else {
-      await profile.update(req.body);
+    try {
+        const userId = req.user.id;
+        const data = req.body;
+        const user = await User.findByPk(userId);
+        console.log(`[UpdateProfile] Request for user ${userId} (${user.role}):`, data);
+
+        // 1. Update Names in User table
+        if (data.firstName || data.lastName) {
+            await User.update({
+                ...(data.firstName && { firstName: data.firstName }),
+                ...(data.lastName && { lastName: data.lastName })
+            }, { where: { id: userId } });
+        }
+
+        let resultData;
+
+        if (user.role === 'employer') {
+            // 2. Update Employer table
+            let employer = await Employer.findOne({ where: { userId } });
+            if (!employer) employer = await Employer.create({ userId, companyName: `${user.firstName}'s Company` });
+
+            const employerFields = ['companyName', 'industry', 'website', 'description', 'companySize'];
+            const updates = {};
+            employerFields.forEach(f => {
+                if (data[f] !== undefined) updates[f] = data[f];
+            });
+
+            await employer.update(updates);
+
+            // Recalculate score for Employer
+            const freshUser = await User.findByPk(userId);
+            const freshEmployer = await Employer.findOne({ where: { userId } });
+            const newScore = calculate(freshEmployer, freshUser);
+            await freshEmployer.update({ profileCompletionPercentage: newScore });
+
+            resultData = await Employer.findOne({
+                where: { userId },
+                include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'role'] }]
+            });
+        } else {
+            // 2. Find/Update Profile table
+            let profile = await Profile.findOne({ where: { userId } });
+            if (!profile) profile = await Profile.create({ userId });
+
+            const fields = ['university', 'courseOfStudy', 'bio', 'locationPreference', 'yearsOfExperience', 'expectedSalary', 'skills'];
+            const updates = {};
+            fields.forEach(f => {
+                if (data[f] !== undefined) updates[f] = data[f];
+            });
+
+            await profile.update(updates);
+
+            // 3. Recalculate score
+            const freshUser = await User.findByPk(userId);
+            const freshProfile = await Profile.findOne({ where: { userId } });
+            const newScore = calculate(freshProfile, freshUser);
+            await freshProfile.update({ profileCompletionPercentage: newScore });
+
+            resultData = await Profile.findOne({
+                where: { userId },
+                include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'role'] }]
+            });
+        }
+
+        console.log('[UpdateProfile] SUCCESS');
+        res.json(resultData);
+
+    } catch (e) {
+        console.error('[UpdateProfile] CRITICAL ERROR:', e);
+        res.status(500).json({ error: 'Database error' });
     }
-
-    // Logic to update skills if provided
-    if (req.body.skills) {
-      // Skill update logic
-    }
-
-    // Update profile completion percentage (FR-12)
-    const completion = calculateCompletion(profile, req.user);
-    await profile.update({ profileCompletionPercentage: completion });
-
-    res.json(profile);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 };
 
 exports.uploadResume = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file' });
+        const userId = req.user.id;
 
-    // Parse resume (FR-08)
-    const parsedData = await resumeParser.parse(req.file.path);
+        let profile = await Profile.findOne({ where: { userId } });
+        if (!profile) profile = await Profile.create({ userId });
 
-    // Save resume URL (mocking S3/Cloudinary)
-    const resumeUrl = `https://storage.com/${req.file.filename}`;
+        await profile.update({ resumeUrl: req.file.filename });
 
-    await Profile.update(
-      { resumeUrl, bio: parsedData.text.substring(0, 500) },
-      { where: { userId: req.user.id } }
-    );
+        const user = await User.findByPk(userId);
+        const score = calculate(profile, user);
+        await profile.update({ profileCompletionPercentage: score });
 
-    res.json({ message: 'Resume uploaded and parsed', skills: parsedData.skills });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        res.json({ message: 'Uploaded', score });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 };
 
 exports.uploadVideo = async (req, res) => {
-  // Logic for video pitch upload (FR-10)
-  res.json({ message: "Video uploaded successfully" });
+    res.json({ message: 'Stub' });
 };
-
-function calculateCompletion(profile, user) {
-  let points = 0;
-  if (user.firstName && user.lastName) points += 20;
-  if (profile.bio) points += 20;
-  if (profile.resumeUrl) points += 20;
-  if (profile.university) points += 20;
-  // Add more checks
-  return Math.min(points, 100);
-}

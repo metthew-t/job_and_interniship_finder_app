@@ -4,7 +4,6 @@ const helmet = require('helmet');
 const dotenv = require('dotenv');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const rateLimit = require('express-rate-limit');
 
 // Load environment variables
 dotenv.config();
@@ -19,17 +18,17 @@ const io = new Server(httpServer, {
 });
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false, // Important for web testing
+}));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
+// TEMPORARILY DISABLED rate limiting for testing
+// const rateLimit = require('express-rate-limit');
+// const limiter = rateLimit({ windowMs: 1 * 60 * 1000, max: 100 });
+// app.use('/api/', limiter);
 
 // Basic Route
 app.get('/', (req, res) => {
@@ -42,6 +41,12 @@ const jobRoutes = require('./routes/jobs');
 const profileRoutes = require('./routes/profiles');
 const applicationRoutes = require('./routes/applications');
 const matchingRoutes = require('./routes/matching');
+const { sequelize } = require('./models');
+
+// Safe Connection (NO SYNC)
+sequelize.authenticate()
+  .then(() => console.log('Database connected successfully.'))
+  .catch(err => console.error('Unable to connect to the database:', err));
 
 // Use Routes
 app.use('/api/auth', authRoutes);
@@ -53,24 +58,15 @@ app.use('/api/matching', matchingRoutes);
 // Socket.io for real-time messaging
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-
-  socket.on('join_room', (roomId) => {
-    socket.join(roomId);
-  });
-
-  socket.on('send_message', (data) => {
-    io.to(data.roomId).emit('receive_message', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
+  socket.on('join_room', (roomId) => socket.join(roomId));
+  socket.on('send_message', (data) => io.to(data.roomId).emit('receive_message', data));
+  socket.on('disconnect', () => console.log('User disconnected'));
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send({ error: 'Something went wrong!' });
+  console.error('SERVER ERROR:', err.stack);
+  res.status(500).send({ error: 'Internal Server Error' });
 });
 
 const PORT = process.env.PORT || 5000;

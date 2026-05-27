@@ -80,7 +80,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const Divider(height: 48),
                 OutlinedButton.icon(
-                  onPressed: () {}, // Google Login
+                  onPressed: _isLoading ? null : () async {
+                    setState(() => _isLoading = true);
+                    final success = await Provider.of<AuthProvider>(context, listen: false).signInWithGoogle();
+                    setState(() => _isLoading = false);
+                    if (success) {
+                      if (mounted) Navigator.pushReplacementNamed(context, '/home');
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Google Login Failed.')),
+                        );
+                      }
+                    }
+                  },
                   icon: const Icon(Icons.login),
                   label: const Text('Sign in with Google'),
                   style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
