@@ -4,10 +4,8 @@ import 'package:flutter/foundation.dart';
 
 class ApiService {
   String get baseUrl {
-    // Chrome on same PC
-    if (kIsWeb) return 'http://127.0.0.1:5000/api';
-    // Physical Phone or Emulator
-    return 'http://10.240.212.133:5000/api';
+    // Production Cloud URL on Render
+    return 'https://job-and-interniship-finder-app.onrender.com/api';
   }
 
   Future<dynamic> get(String endpoint, {String? token}) async {

@@ -19,9 +19,16 @@ const io = new Server(httpServer, {
 
 // Middleware
 app.use(helmet({
-  crossOriginResourcePolicy: false, // Important for web testing
+  crossOriginResourcePolicy: false,
 }));
-app.use(cors());
+
+// Explicit CORS configuration for Web App
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
