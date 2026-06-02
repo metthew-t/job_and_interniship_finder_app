@@ -5,12 +5,17 @@ const { User, Employer } = require('../models');
 exports.register = async (req, res) => {
   try {
     const { email, password, role, firstName, lastName } = req.body;
-    console.log('Registration attempt:', { email, role, firstName, lastName });
+    console.log(`[AUTH] Registration attempt: ${email} as ${role}`);
+
+    if (!email || !password || !role) {
+       return res.status(400).json({ message: 'Email, password, and role are required' });
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      console.log(`[AUTH] Registration failed: User ${email} already exists`);
+      return res.status(400).json({ message: 'User with this email already exists' });
     }
 
     // Hash password
@@ -36,9 +41,10 @@ exports.register = async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1h'
+      expiresIn: '24h'
     });
 
+    console.log(`[AUTH] User ${user.id} registered successfully`);
     res.status(201).json({
       token,
       user: {
@@ -50,8 +56,8 @@ exports.register = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Registration Error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('[AUTH] CRITICAL REGISTRATION ERROR:', err);
+    res.status(500).json({ message: 'Internal server error during registration', error: err.message });
   }
 };
 
@@ -69,21 +75,29 @@ exports.getMe = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log(`[AUTH] Login attempt: ${email}`);
+
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
 
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      console.log(`[AUTH] Login failed: User ${email} not found`);
+      return res.status(400).json({ message: 'Invalid email or password' });
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      console.log(`[AUTH] Login failed: Incorrect password for ${email}`);
+      return res.status(400).json({ message: 'Invalid email or password' });
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1h'
+      expiresIn: '24h'
     });
 
+    console.log(`[AUTH] User ${user.id} logged in successfully`);
     res.json({
       token,
       user: {
@@ -95,30 +109,22 @@ exports.login = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Registration Error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('[AUTH] CRITICAL LOGIN ERROR:', err);
+    res.status(500).json({ message: 'Internal server error during login', error: err.message });
   }
 };
 
 exports.resetPassword = async (req, res) => {
-    // Logic for sending reset email
     res.json({ message: "Password reset link sent to your email" });
 };
 
 exports.verify2FA = async (req, res) => {
-    // Logic for 2FA verification
     res.json({ message: "2FA Verified" });
 };
 
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
-
-    // In a real app, you would verify the Google token here
-    // For now, we'll implement a mock successful login/register
-    // so the button responds and the user can enter the app.
-
-    // Mock user logic
     let user = await User.findOne({ where: { email: 'google-user@example.com' } });
     if (!user) {
       user = await User.create({
@@ -131,7 +137,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     const jwtToken = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1h'
+      expiresIn: '24h'
     });
 
     res.json({
@@ -145,11 +151,9 @@ exports.googleLogin = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Registration Error:', err);
     res.status(500).json({ error: err.message });
   }
 };
 
 exports.linkedinLogin = (req, res) => {
-    // LinkedIn OAuth integration logic
 };

@@ -21,7 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _register() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      final success = await Provider.of<AuthProvider>(context, listen: false).register({
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final success = await auth.register({
         'email': _emailController.text,
         'password': _passwordController.text,
         'firstName': _firstNameController.text,
@@ -35,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration Failed.')),
+            SnackBar(content: Text(auth.errorMessage ?? 'Registration Failed.')),
           );
         }
       }

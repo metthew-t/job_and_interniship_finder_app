@@ -18,7 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      final success = await Provider.of<AuthProvider>(context, listen: false).login(
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final success = await auth.login(
         _emailController.text,
         _passwordController.text,
       );
@@ -29,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login Failed. Please check your credentials.')),
+            SnackBar(content: Text(auth.errorMessage ?? 'Login Failed.')),
           );
         }
       }

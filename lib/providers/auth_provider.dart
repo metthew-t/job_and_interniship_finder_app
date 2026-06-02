@@ -7,15 +7,18 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthProvider with ChangeNotifier {
   User? _user;
   String? _token;
+  String? _errorMessage;
   final _storage = const FlutterSecureStorage();
   final ApiService _apiService = ApiService();
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   User? get user => _user;
   String? get token => _token;
+  String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _token != null;
 
   Future<bool> login(String email, String password) async {
+    _errorMessage = null;
     try {
       final response = await _apiService.post('/auth/login', {
         'email': email,
@@ -29,14 +32,19 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
+      _errorMessage = response?['message'] ?? 'Login failed. Please check your credentials.';
+      notifyListeners();
       return false;
     } catch (e) {
+      _errorMessage = 'Connection error. Please check your internet.';
       print('Login error: $e');
+      notifyListeners();
       return false;
     }
   }
 
   Future<bool> register(Map<String, dynamic> userData) async {
+    _errorMessage = null;
     try {
       final response = await _apiService.post('/auth/register', userData);
       if (response != null && response['token'] != null) {
@@ -46,9 +54,13 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
+      _errorMessage = response?['message'] ?? 'Registration failed. Try a different email.';
+      notifyListeners();
       return false;
     } catch (e) {
+      _errorMessage = 'Connection error. Please check your internet.';
       print('Register error: $e');
+      notifyListeners();
       return false;
     }
   }
