@@ -102,11 +102,13 @@ class ApiService {
 
   dynamic _processResponse(http.Response response, String method, String url) {
     print('📥 $method $url → ${response.statusCode}');
+    final decoded = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
+      return decoded;
     } else {
       print('❌ API Error (${response.statusCode}): ${response.body}');
-      return null;
+      // Return the error body instead of null so the app can show the message
+      return decoded;
     }
   }
 }

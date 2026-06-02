@@ -40,6 +40,11 @@ exports.register = async (req, res) => {
     }
 
     // Generate JWT
+    if (!process.env.JWT_SECRET) {
+      console.error('[AUTH] MISSING JWT_SECRET in environment variables!');
+      return res.status(500).json({ message: 'Server configuration error: Missing Secret Key' });
+    }
+
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
       expiresIn: '24h'
     });
