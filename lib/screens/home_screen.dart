@@ -212,6 +212,7 @@ class _JobListPageState extends State<JobListPage> {
                       _buildCategoryChip('Finance', Colors.green, _selectedCategory == 'Finance'),
                       _buildCategoryChip('Design', Colors.purple, _selectedCategory == 'Design'),
                       _buildCategoryChip('Marketing', Colors.orange, _selectedCategory == 'Marketing'),
+                      _buildCategoryChip('Engineering', Colors.red, _selectedCategory == 'Engineering'),
                     ],
                   ),
                 ),
